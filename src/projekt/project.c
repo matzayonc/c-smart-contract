@@ -6,8 +6,6 @@
 extern uint64_t allocate(SolParameters *params, uint64_t size)
 {
 
-  sol_log_params(params);
-
   // As part of the program specification the first account is the system
   // program's executable account and the second is the account to allocate
   if (params->ka_num < 2)
@@ -57,12 +55,17 @@ extern uint64_t entrypoint(const uint8_t *input)
     return ERROR_INVALID_ARGUMENT;
   }
 
-  char instruction = params.data[0];
-  // sol_log(instruction);
-  while (instruction-- > 0)
+  char instruction = params.data[1];
+
+  switch (instruction)
   {
-    sol_log("Alokuje");
+  case 99:
+    return allocate(&params, 42);
+    break;
+
+  default:
+    sol_log("Instruction not recognized");
+    return ERROR_INVALID_ARGUMENT;
+    break;
   }
-  params.ka_num = 2;
-  return allocate(&params, 42);
 }
