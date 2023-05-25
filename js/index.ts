@@ -20,41 +20,42 @@ const keypair = Keypair.fromSecretKey(
 	])
 )
 const program = new PublicKey("8AnN79SiXHsQd4pmMg2VQUJk6766K6h2Ce6FjoNgzttX")
+const game = Keypair.generate()
 
-const allocateInstruction = async () => {
-	const [state, bump] = PublicKey.findProgramAddressSync(
-		[
-			Buffer.from(
-				new (require("util").TextEncoder)("utf-8").encode(
-					"Hello C++ on blockchain"
-				)
-			),
-		],
-		program
-	)
-
-	let layout = struct([u8("bump"), u8("instruction"), u8("player")] as any[])
+const turn = async (player: number, field: number) => {
+	let tx = new Transaction()
+	let layout = struct([u8("instruction"), u8("player")] as any[])
 	let data = Buffer.alloc(layout.span)
-	let layoutFields = Object.assign(
-		{ bump },
-		{ instruction: 99 },
-		{ player: 0 }
-	)
+	let layoutFields = Object.assign({ instruction: 1 }, { player }, { field })
 	layout.encode(layoutFields, data)
 
-	return new TransactionInstruction({
-		keys: [
-			{
-				pubkey: SystemProgram.programId,
-				isSigner: false,
-				isWritable: false,
-			},
-			{ pubkey: state, isSigner: false, isWritable: true },
-			{ pubkey: keypair.publicKey, isSigner: true, isWritable: true },
-		],
-		programId: program,
-		data,
-	})
+	tx.add(
+		new TransactionInstruction({
+			keys: [
+				{ pubkey: keypair.publicKey, isSigner: true, isWritable: true },
+				{ pubkey: game.publicKey, isSigner: true, isWritable: true },
+			],
+			programId: program,
+			data,
+		})
+	)
+
+	console.log("Sending transaction...")
+
+	let sig
+	try {
+		sig = await sendAndConfirmTransaction(connection, tx, [keypair, game], {
+			// skipPreflight: true,
+		})
+		const fetchedAccount = await connection.getAccountInfo(game.publicKey)
+		if (fetchedAccount != null) {
+			console.log("Account exists")
+			console.log("Account data:", fetchedAccount.data.toString())
+		}
+	} catch (error) {
+		console.error(error)
+	}
+	console.log(`player ${player} tx: ${sig}`)
 }
 
 const main = async () => {
@@ -66,39 +67,60 @@ const main = async () => {
 
 	console.log("Using keypair:", keypair.publicKey.toBase58())
 
-	let allocateTransaction = new Transaction({
+	let tx = new Transaction({
 		feePayer: keypair.publicKey,
 	})
 
-	const [state, bump] = PublicKey.findProgramAddressSync(
-		[
-			Buffer.from(
-				new (require("util").TextEncoder)("utf-8").encode(
-					"Hello C++ on blockchain"
-				)
-			),
-		],
-		program
+	tx.add(
+		SystemProgram.createAccount({
+			fromPubkey: keypair.publicKey,
+			newAccountPubkey: game.publicKey,
+			space: 10,
+			lamports: await connection.getMinimumBalanceForRentExemption(10),
+			programId: program,
+		})
 	)
 
-	allocateTransaction.add(await allocateInstruction())
+	let layout = struct([u8("instruction"), u8("player"), u8("field")] as any[])
+	let data = Buffer.alloc(layout.span)
+	let layoutFields = Object.assign(
+		{ instruction: 0 },
+		{ player: 0 },
+		{ field: 0 }
+	)
+	layout.encode(layoutFields, data)
+
+	tx.add(
+		new TransactionInstruction({
+			keys: [
+				{ pubkey: keypair.publicKey, isSigner: true, isWritable: true },
+				{ pubkey: game.publicKey, isSigner: true, isWritable: true },
+			],
+			programId: program,
+			data,
+		})
+	)
 
 	console.log("Sending transaction...")
 
 	let sig
 	try {
-		sig = await sendAndConfirmTransaction(
-			connection,
-			allocateTransaction,
-			[keypair],
-			{
-				// skipPreflight: true,
-			}
-		)
+		sig = await sendAndConfirmTransaction(connection, tx, [keypair, game], {
+			// skipPreflight: true,
+		})
 	} catch (error) {
 		console.error(error)
 	}
 	console.log("Transaction signature:", sig)
+
+	console.log("Fetching account info...")
+	const fetchedAccount = await connection.getAccountInfo(game.publicKey)
+	if (fetchedAccount != null) {
+		console.log("Account exists")
+		console.log("Account data:", fetchedAccount.data.toString("hex"))
+	}
+
+	await turn(0, 1)
 }
 
 main()

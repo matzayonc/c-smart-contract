@@ -55,17 +55,42 @@ extern uint64_t entrypoint(const uint8_t *input)
     return ERROR_INVALID_ARGUMENT;
   }
 
-  char instruction = params.data[1];
+  char instruction = params.data[0];
+  char player = params.data[1];
+  char field = params.data[2];
+  uint8_t *data = params.ka[1].data;
 
   switch (instruction)
   {
-  case 99:
-    return allocate(&params, 42);
-    break;
+  case 0:
+    sol_log("Init");
+
+    data[0] = 0;
+    for (int i = 1; i <= 9; i++)
+    {
+      data[i] = 2;
+      // *(uint8_t *)(data) = 0;
+    }
+
+  case 1:
+    sol_log("Play");
+
+    if (data[0] % 2 != player)
+      return ERROR_INVALID_ARGUMENT;
+
+    if (field > 0 && field < 10 && data[field] == 2)
+      return ERROR_INVALID_ARGUMENT;
+
+    data[0]++;
+    data[field] = player;
+
+    return SUCCESS;
 
   default:
     sol_log("Instruction not recognized");
     return ERROR_INVALID_ARGUMENT;
     break;
   }
+
+  return SUCCESS;
 }
