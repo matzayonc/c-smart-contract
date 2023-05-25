@@ -6,6 +6,8 @@
 extern uint64_t allocate(SolParameters *params, uint64_t size)
 {
 
+  sol_log_params(params);
+
   // As part of the program specification the first account is the system
   // program's executable account and the second is the account to allocate
   if (params->ka_num < 2)
@@ -45,25 +47,6 @@ extern uint64_t allocate(SolParameters *params, uint64_t size)
                            signers_seeds, SOL_ARRAY_SIZE(signers_seeds));
 }
 
-extern uint64_t transfer(SolParameters *params, int quantity)
-{
-  sol_log_params(params);
-
-  // As part of the program specification the first account is the source
-  // account and the second is the destination account
-  if (params->ka_num < 3)
-  {
-    return ERROR_NOT_ENOUGH_ACCOUNT_KEYS;
-  }
-  SolAccountInfo *source_info = &params->ka[2];
-  SolAccountInfo *destination_info = &params->ka[1];
-
-  *source_info->lamports -= quantity;
-  *destination_info->lamports += quantity;
-
-  return SUCCESS;
-}
-
 extern uint64_t entrypoint(const uint8_t *input)
 {
   SolAccountInfo accounts[3];
@@ -74,25 +57,12 @@ extern uint64_t entrypoint(const uint8_t *input)
     return ERROR_INVALID_ARGUMENT;
   }
 
-  if (!sol_deserialize(input, &params, SOL_ARRAY_SIZE(accounts)))
+  char instruction = params.data[0];
+  // sol_log(instruction);
+  while (instruction-- > 0)
   {
-    return ERROR_INVALID_ARGUMENT;
+    sol_log("Alokuje");
   }
-
-  // char instruction = params.data[0];
-  // // sol_log(instruction);
-  // while (instruction-- > 0)
-  //   sol_log("Alokuje");
-
-  // sol_log("Wczytałem wszystko");
-
-  // if (allocate(&params, 42) != SUCCESS)
-  //   return allocate(&params, 42);
-  // sol_log("Pamięc zaalokowana");
-
-  // if (transfer(&params, 10000) != SUCCESS)
-  //   return transfer(&params, 10000);
-  // sol_log("Lamporty przesłane");
-
-  return SUCCESS;
+  params.ka_num = 2;
+  return allocate(&params, 42);
 }

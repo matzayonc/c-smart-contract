@@ -21,6 +21,42 @@ const keypair = Keypair.fromSecretKey(
 )
 const program = new PublicKey("8AnN79SiXHsQd4pmMg2VQUJk6766K6h2Ce6FjoNgzttX")
 
+const allocateInstruction = async () => {
+	const [state, bump] = PublicKey.findProgramAddressSync(
+		[
+			Buffer.from(
+				new (require("util").TextEncoder)("utf-8").encode(
+					"Hello C++ on blockchain"
+				)
+			),
+		],
+		program
+	)
+
+	let layout = struct([u8("bump"), u8("instruction"), u8("player")] as any[])
+	let data = Buffer.alloc(layout.span)
+	let layoutFields = Object.assign(
+		{ bump },
+		{ instruction: 99 },
+		{ player: 0 }
+	)
+	layout.encode(layoutFields, data)
+
+	return new TransactionInstruction({
+		keys: [
+			{
+				pubkey: SystemProgram.programId,
+				isSigner: false,
+				isWritable: false,
+			},
+			{ pubkey: state, isSigner: false, isWritable: true },
+			{ pubkey: keypair.publicKey, isSigner: true, isWritable: true },
+		],
+		programId: program,
+		data,
+	})
+}
+
 const main = async () => {
 	const fetchedProgram = await connection.getAccountInfo(program)
 
@@ -34,8 +70,6 @@ const main = async () => {
 		feePayer: keypair.publicKey,
 	})
 
-	let layout = struct([u8("bump"), u8("instruction"), u8("player")] as any[])
-
 	const [state, bump] = PublicKey.findProgramAddressSync(
 		[
 			Buffer.from(
@@ -47,29 +81,7 @@ const main = async () => {
 		program
 	)
 
-	let data = Buffer.alloc(layout.span)
-	let layoutFields = Object.assign(
-		{ bump },
-		{ instruction: 5 },
-		{ player: 0 }
-	)
-	layout.encode(layoutFields, data)
-
-	allocateTransaction.add(
-		new TransactionInstruction({
-			keys: [
-				{
-					pubkey: SystemProgram.programId,
-					isSigner: false,
-					isWritable: false,
-				},
-				{ pubkey: state, isSigner: false, isWritable: true },
-				{ pubkey: keypair.publicKey, isSigner: true, isWritable: true },
-			],
-			programId: program,
-			data,
-		})
-	)
+	allocateTransaction.add(await allocateInstruction())
 
 	console.log("Sending transaction...")
 
