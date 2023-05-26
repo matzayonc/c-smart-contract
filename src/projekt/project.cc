@@ -68,7 +68,9 @@ extern uint64_t entrypoint(const uint8_t *input)
     break;
 
   case 1:
-    sol_log("Play6");
+    // sol_log("Play7");
+
+    sol_log(player == 1 ? "Ruch gracza O" : "Ruch gracza X");
 
     tic.print();
     if(tic.winner() != 2) {

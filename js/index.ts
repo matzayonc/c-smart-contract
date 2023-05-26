@@ -8,6 +8,11 @@ import {
 	sendAndConfirmTransaction,
 } from "@solana/web3.js"
 import { struct, u32, ns64, u8 } from "@solana/buffer-layout"
+const readline = require("readline")
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout,
+})
 
 const connection = new Connection("https://api.devnet.solana.com")
 const keypair = Keypair.fromSecretKey(
@@ -19,8 +24,11 @@ const keypair = Keypair.fromSecretKey(
 		231, 28, 18, 53,
 	])
 )
-const program = new PublicKey("7M69xk668NXsovVzCkaViwmd6sxc5Tch6djAky4a6JAX")
-const game = Keypair.generate()
+const program = new PublicKey("7e2vBfoSAbnJSFM1f67Nuq2KjESysShxQCmKUcHnWtGS")
+const gameKeypair = Keypair.generate()
+let gameId = gameKeypair.publicKey
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 const turn = async (player: number, field: number) => {
 	let tx = new Transaction()
@@ -33,7 +41,7 @@ const turn = async (player: number, field: number) => {
 		new TransactionInstruction({
 			keys: [
 				{ pubkey: keypair.publicKey, isSigner: true, isWritable: true },
-				{ pubkey: game.publicKey, isSigner: true, isWritable: true },
+				{ pubkey: gameId, isSigner: false, isWritable: true },
 			],
 			programId: program,
 			data,
@@ -43,101 +51,119 @@ const turn = async (player: number, field: number) => {
 	console.log("Sending transaction...")
 
 	let sig
-	try {
-		sig = await sendAndConfirmTransaction(connection, tx, [keypair, game], {
-			// skipPreflight: true,
-		})
-		const fetchedAccount = await connection.getAccountInfo(game.publicKey)
-		if (fetchedAccount != null) {
-			console.log("Account exists")
-			console.log("Account data:", fetchedAccount.data.toString())
+	let c = 3
+	while (sig == null && c-- > 0)
+		try {
+			sig = await sendAndConfirmTransaction(connection, tx, [keypair], {
+				// skipPreflight: true,
+			})
+			const fetchedAccount = await connection.getAccountInfo(gameId)
+			if (fetchedAccount != null) {
+				console.log("Account exists")
+				console.log("Account data:", fetchedAccount.data.toString())
+			}
+		} catch (error) {
+			console.error(error)
 		}
-	} catch (error) {
-		console.error(error)
-	}
 	console.log(`player ${player} tx: ${sig}`)
+	await sleep(1000)
 }
 
-const main = async () => {
+const main = async (gameStr: string, player: string) => {
+	gameId = gameStr ? new PublicKey(gameStr) : gameId
 	const fetchedProgram = await connection.getAccountInfo(program)
 
 	if (fetchedProgram != null) {
 		console.log("Program exists")
 	}
 
+	console.log("Game ID: ", gameId)
 	console.log("Using keypair:", keypair.publicKey.toBase58())
 
 	let tx = new Transaction({
 		feePayer: keypair.publicKey,
 	})
 
-	tx.add(
-		SystemProgram.createAccount({
-			fromPubkey: keypair.publicKey,
-			newAccountPubkey: game.publicKey,
-			space: 10,
-			lamports: await connection.getMinimumBalanceForRentExemption(10),
-			programId: program,
-		})
-	)
+	if (!gameStr) {
+		tx.add(
+			SystemProgram.createAccount({
+				fromPubkey: keypair.publicKey,
+				newAccountPubkey: gameKeypair.publicKey,
+				space: 10,
+				lamports: await connection.getMinimumBalanceForRentExemption(
+					10
+				),
+				programId: program,
+			})
+		)
 
-	let layout = struct([u8("instruction"), u8("player"), u8("field")] as any[])
-	let data = Buffer.alloc(layout.span)
-	let layoutFields = Object.assign(
-		{ instruction: 0 },
-		{ player: 0 },
-		{ field: 0 }
-	)
-	layout.encode(layoutFields, data)
+		let layout = struct([
+			u8("instruction"),
+			u8("player"),
+			u8("field"),
+		] as any[])
+		let data = Buffer.alloc(layout.span)
+		let layoutFields = Object.assign(
+			{ instruction: 0 },
+			{ player: 0 },
+			{ field: 0 }
+		)
+		layout.encode(layoutFields, data)
 
-	tx.add(
-		new TransactionInstruction({
-			keys: [
-				{ pubkey: keypair.publicKey, isSigner: true, isWritable: true },
-				{ pubkey: game.publicKey, isSigner: true, isWritable: true },
-			],
-			programId: program,
-			data,
-		})
-	)
+		tx.add(
+			new TransactionInstruction({
+				keys: [
+					{
+						pubkey: keypair.publicKey,
+						isSigner: true,
+						isWritable: true,
+					},
+					{
+						pubkey: gameKeypair.publicKey,
+						isSigner: true,
+						isWritable: true,
+					},
+				],
+				programId: program,
+				data,
+			})
+		)
 
-	console.log("Sending transaction...")
+		console.log("Sending transaction...")
 
-	let sig
-	try {
-		sig = await sendAndConfirmTransaction(connection, tx, [keypair, game], {
-			// skipPreflight: true,
-		})
-	} catch (error) {
-		console.error(error)
+		let sig
+		try {
+			sig = await sendAndConfirmTransaction(
+				connection,
+				tx,
+				[keypair, gameKeypair],
+				{
+					// skipPreflight: true,
+				}
+			)
+		} catch (error) {
+			console.error(error)
+		}
+		console.log("Transaction signature:", sig)
 	}
-	console.log("Transaction signature:", sig)
-
 	console.log("Fetching account info...")
-	const fetchedAccount = await connection.getAccountInfo(game.publicKey)
-	if (fetchedAccount != null) {
-		console.log("Account exists")
-		console.log("Account data:", fetchedAccount.data.toString("hex"))
-	}
+	let fetchedAccount3
+	while (fetchedAccount3 == null)
+		fetchedAccount3 = await connection.getAccountInfo(gameId)
 
-	const sleep = (ms: number) =>
-		new Promise(resolve => setTimeout(resolve, ms))
-	await sleep(1000)
+	// console.log("Account exists")
+	console.log("Account data:", fetchedAccount3.data.toString("hex"))
 
-	await turn(0, 2)
-	await turn(1, 1)
-	await turn(0, 5)
-	await turn(1, 7)
-	await turn(0, 8)
+	rl.question("What is your move?", async (field: string) => {
+		if (!field) return
+		await turn(player == "X" ? 1 : 0, parseInt(field))
 
-	console.log("Fetching account info...")
+		console.log("Fetching account info...")
 
-	let fetchedAccount2
-	while (fetchedAccount2 == null)
-		fetchedAccount2 = await connection.getAccountInfo(game.publicKey)
-
-	console.log("Account exists")
-	console.log("Account data:", fetchedAccount2.data.toString("hex"))
+		main(gameId.toBase58(), player)
+	})
 }
 
-main()
+rl.question("Enter GameID, empty for new game?", (name: string) => {
+	main(name, name ? "O" : "X")
+})
