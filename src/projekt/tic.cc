@@ -14,27 +14,22 @@ void Tic::reset() {
 }
 
 int Tic::set(uint8_t field, uint8_t player) {
-    sol_log("set3z");
-    if ((data_[0] % 2) != player)
+    if ((data_[0] % 2) != player) {
+        sol_log("Błąd: nie twoja kolej!");
         return -1;
+    }
 
-    sol_log("set3a");
-    
-    uint8_t k = field;
-    while (k--)
-        sol_log("set3aa");
-
-
-
-    if (field < 1 || field > 9)
+    if (field < 1 || field > 9) {
+        sol_log("Błąd: niepoprawne pole!");
         return -2;
+    }
 
-    sol_log("set3b");
-
-    if(data_[field] != 2)
+    if(data_[field] != 2) {
+        sol_log("Błąd: pole już zajęte!");
         return -3;
+    }
 
-    sol_log("set3c");
+    sol_log("Ruch poprawny");
     data_[0]++;
     data_[field] = player;
 

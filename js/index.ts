@@ -17,14 +17,14 @@ const rl = readline.createInterface({
 const connection = new Connection("https://api.devnet.solana.com")
 const keypair = Keypair.fromSecretKey(
 	new Uint8Array([
-		175, 113, 217, 8, 160, 232, 167, 208, 204, 153, 226, 164, 234, 124, 252,
-		147, 79, 209, 48, 193, 127, 164, 219, 155, 143, 91, 45, 17, 46, 221,
-		148, 107, 116, 254, 1, 210, 231, 15, 65, 24, 239, 166, 111, 244, 148,
-		187, 46, 130, 30, 131, 199, 76, 253, 206, 52, 164, 252, 26, 212, 144,
-		231, 28, 18, 53,
+		96, 215, 221, 190, 158, 190, 46, 187, 4, 149, 77, 74, 241, 36, 228, 57,
+		180, 30, 248, 222, 81, 147, 16, 52, 142, 128, 198, 225, 78, 161, 240,
+		170, 77, 179, 75, 249, 170, 79, 85, 114, 132, 229, 58, 124, 37, 214, 33,
+		224, 21, 113, 152, 86, 118, 183, 86, 130, 213, 68, 65, 180, 4, 231, 190,
+		28,
 	])
 )
-const program = new PublicKey("7e2vBfoSAbnJSFM1f67Nuq2KjESysShxQCmKUcHnWtGS")
+const program = new PublicKey("Gdj6hXMoMKZwfTqrZGgGmXScmDdozrD5b8SgebGrbFT")
 const gameKeypair = Keypair.generate()
 let gameId = gameKeypair.publicKey
 
