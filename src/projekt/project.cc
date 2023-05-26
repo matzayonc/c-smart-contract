@@ -1,7 +1,5 @@
-/**
- * @brief A program demonstrating cross program invocations
- */
 #include <solana_sdk.h>
+#include "tic.h"
 
 extern uint64_t allocate(SolParameters *params, uint64_t size)
 {
@@ -55,36 +53,34 @@ extern uint64_t entrypoint(const uint8_t *input)
     return ERROR_INVALID_ARGUMENT;
   }
 
-  char instruction = params.data[0];
-  char player = params.data[1];
-  char field = params.data[2];
+  uint8_t instruction = params.data[0];
+  uint8_t player = params.data[1];
+  uint8_t field = params.data[2];
   uint8_t *data = params.ka[1].data;
+  struct Tic tic(data);
 
   switch (instruction)
   {
   case 0:
     sol_log("Init");
+    tic.reset();
 
-    data[0] = 0;
-    for (int i = 1; i <= 9; i++)
-    {
-      data[i] = 2;
-      // *(uint8_t *)(data) = 0;
-    }
+    break;
 
   case 1:
-    sol_log("Play");
+    sol_log("Play6");
 
-    if (data[0] % 2 != player)
+    tic.print();
+    if(tic.winner() != 2) {
+      sol_log("Game over");
+      return ERROR_INVALID_ARGUMENT;
+    }
+    
+
+    if(tic.set(field, player % 2))
       return ERROR_INVALID_ARGUMENT;
 
-    if (field > 0 && field < 10 && data[field] == 2)
-      return ERROR_INVALID_ARGUMENT;
-
-    data[0]++;
-    data[field] = player;
-
-    return SUCCESS;
+    break;
 
   default:
     sol_log("Instruction not recognized");
@@ -92,5 +88,6 @@ extern uint64_t entrypoint(const uint8_t *input)
     break;
   }
 
+  tic.print();
   return SUCCESS;
 }

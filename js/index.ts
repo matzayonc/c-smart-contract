@@ -19,12 +19,12 @@ const keypair = Keypair.fromSecretKey(
 		231, 28, 18, 53,
 	])
 )
-const program = new PublicKey("8AnN79SiXHsQd4pmMg2VQUJk6766K6h2Ce6FjoNgzttX")
+const program = new PublicKey("7M69xk668NXsovVzCkaViwmd6sxc5Tch6djAky4a6JAX")
 const game = Keypair.generate()
 
 const turn = async (player: number, field: number) => {
 	let tx = new Transaction()
-	let layout = struct([u8("instruction"), u8("player")] as any[])
+	let layout = struct([u8("instruction"), u8("player"), u8("field")] as any[])
 	let data = Buffer.alloc(layout.span)
 	let layoutFields = Object.assign({ instruction: 1 }, { player }, { field })
 	layout.encode(layoutFields, data)
@@ -120,7 +120,24 @@ const main = async () => {
 		console.log("Account data:", fetchedAccount.data.toString("hex"))
 	}
 
-	await turn(0, 1)
+	const sleep = (ms: number) =>
+		new Promise(resolve => setTimeout(resolve, ms))
+	await sleep(1000)
+
+	await turn(0, 2)
+	await turn(1, 1)
+	await turn(0, 5)
+	await turn(1, 7)
+	await turn(0, 8)
+
+	console.log("Fetching account info...")
+
+	let fetchedAccount2
+	while (fetchedAccount2 == null)
+		fetchedAccount2 = await connection.getAccountInfo(game.publicKey)
+
+	console.log("Account exists")
+	console.log("Account data:", fetchedAccount2.data.toString("hex"))
 }
 
 main()
